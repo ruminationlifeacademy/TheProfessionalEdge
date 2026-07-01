@@ -146,6 +146,61 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   .hidden { display: none; }
+
+  /* Roster table */
+  .roster-controls { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+  .roster-search {
+    flex: 1; min-width: 220px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--white); color: var(--ink); font-size: 14px;
+  }
+  .roster-search:focus { outline: none; border-color: var(--blue); }
+  .roster-count { font-size: 13px; color: var(--grey); }
+  .roster-wrap { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  table.roster { width: 100%; border-collapse: collapse; }
+  table.roster th, table.roster td { padding: 13px 16px; text-align: left; font-size: 14px; border-bottom: 1px solid var(--line); }
+  table.roster th { background: var(--soft); color: var(--grey); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+  table.roster th.num, table.roster td.num { text-align: center; font-variant-numeric: tabular-nums; }
+  table.roster tbody tr { cursor: pointer; transition: background .12s; }
+  table.roster tbody tr:hover { background: var(--soft); }
+  table.roster tbody tr:last-child td { border-bottom: none; }
+  table.roster .nm { font-weight: 600; color: var(--ink); }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 13px; font-weight: 700; }
+  .pill.pre { background: rgba(41,171,226,.12); color: var(--blue-dark); }
+  .pill.post { background: var(--soft-green); color: var(--green-dark); }
+  .pill.muted { background: var(--soft); color: var(--grey); }
+  .growth-pos { color: var(--green-dark); font-weight: 700; }
+  .growth-zero { color: var(--grey); }
+
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(22,56,77,.45);
+    z-index: 100; padding: 24px; overflow-y: auto;
+  }
+  .modal-overlay.open { display: flex; align-items: flex-start; justify-content: center; }
+  .modal {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 16px; max-width: 760px; width: 100%;
+    margin: auto; position: relative; box-shadow: 0 20px 60px rgba(22,56,77,.25);
+  }
+  .modal-close {
+    position: absolute; top: 16px; right: 16px; width: 34px; height: 34px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--white); color: var(--grey); font-size: 20px; cursor: pointer; line-height: 1;
+  }
+  .modal-close:hover { color: var(--ink); }
+  .modal-head { padding: 24px 24px 16px; border-bottom: 1px solid var(--line); }
+  .modal-head h2 { font-size: 22px; color: var(--ink); margin-right: 40px; }
+  .modal-sub { font-size: 14px; color: var(--grey); margin-top: 4px; }
+  .modal-body { padding: 8px 24px 24px; }
+  .ans-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; margin: 22px 0 10px; }
+  .ans-section-title.pre { color: var(--blue); }
+  .ans-section-title.post { color: var(--green-dark); }
+  .ans-row { padding: 11px 0; border-bottom: 1px solid var(--line); display: flex; gap: 14px; align-items: flex-start; }
+  .ans-row:last-child { border-bottom: none; }
+  .ans-q { flex: 1; font-size: 14px; color: var(--ink); }
+  .ans-q .qn { color: var(--grey); font-weight: 700; margin-right: 6px; }
+  .ans-choice { flex-shrink: 0; text-align: right; min-width: 96px; }
+  .ans-score { font-size: 16px; font-weight: 700; }
+  .ans-label { display: block; font-size: 11px; color: var(--grey); margin-top: 1px; }
+  .ans-missing { color: var(--grey); font-style: italic; padding: 14px 0; }
 </style>
 </head>
 <body>
@@ -167,6 +222,7 @@
 
   <div class="tabs">
     <button class="tab active" data-tab="submissions" onclick="switchTab('submissions')">Submissions</button>
+    <button class="tab" data-tab="students" onclick="switchTab('students')">Students</button>
     <button class="tab" data-tab="analytics" onclick="switchTab('analytics')">Analytics</button>
   </div>
 
@@ -191,7 +247,31 @@
     </div>
   </div>
 
-  <!-- TAB 2: ANALYTICS -->
+  <!-- TAB 2: STUDENTS ROSTER -->
+  <div class="tabpane" id="pane-students">
+    <div class="roster-controls">
+      <input type="text" id="rosterSearch" class="roster-search" placeholder="Search by name or college…" oninput="renderRoster()" />
+      <span class="roster-count" id="rosterCount"></span>
+    </div>
+    <div class="roster-wrap">
+      <table class="roster">
+        <thead>
+          <tr>
+            <th>Student name</th>
+            <th>College</th>
+            <th class="num">Pre score</th>
+            <th class="num">Post score</th>
+            <th class="num">Growth</th>
+          </tr>
+        </thead>
+        <tbody id="rosterBody"></tbody>
+      </table>
+    </div>
+    <div class="empty hidden" id="roster-empty">No submissions yet. Students appear here as they submit.</div>
+    <p class="note">Tap any student to see their question-by-question answers.</p>
+  </div>
+
+  <!-- TAB 3: ANALYTICS -->
   <div class="tabpane" id="pane-analytics">
 
     <div id="an-loading" class="state">
@@ -240,6 +320,18 @@
   </div>
 </div>
 
+<!-- Student answers modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeStudentModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeStudentModal()" aria-label="Close">×</button>
+    <div class="modal-head">
+      <h2 id="modalName">Student</h2>
+      <div class="modal-sub" id="modalMeta"></div>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
 <script>
   // ===== CONFIG =====
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwCFf3xbv_iu4gyMyPcxqhX2a6DpH4gKXwwaQBKrzXQJTOO03Toqo0-GeS1us5JFU5_/exec";
@@ -266,6 +358,61 @@
     "Express ideas clearly"
   ];
 
+  // Full question text (pre and post are worded differently), shown in the per-student modal.
+  const PRE_TEXT = [
+    "I already carry myself exactly like a polished, seasoned professional at all times.",
+    "I have absolute, total command over distractions and never once lose focus to my phone.",
+    "I know with absolute certainty exactly where I outperform everyone around me.",
+    "I command a vast, powerful vocabulary and use it perfectly with total ease at all times.",
+    "I finish every important thing I plan, every single day, without exception.",
+    "I adapt instantly and effortlessly to any change, every time, with zero discomfort.",
+    "I carry complete, rock-solid self-worth in every single situation, no matter who is around.",
+    "I stay perfectly calm and unshaken under absolutely any pressure or failure.",
+    "I write and speak at a flawless, polished professional level in every situation.",
+    "I learn with flawless, total efficiency and use my brain perfectly every time I study.",
+    "Every single time I fail, I bounce straight back and try again without any hesitation.",
+    "I flawlessly adapt my communication to absolutely any person or situation, every time.",
+    "I have total, precise clarity on all my strengths and use every one of them masterfully.",
+    "I never once struggle to put what I mean into words; it is always instant and perfect.",
+    "I manage my time, tasks and energy with absolutely flawless, masterful discipline.",
+    "I have completely outgrown my school-student mindset in every way.",
+    "I greet every difficult new thing with total excitement and never once feel discouraged.",
+    "I speak and present with complete, fearless confidence, no matter who is in the room, always.",
+    "I control my phone and screens completely, every moment of every day.",
+    "I master any new skill at incredible speed, no matter how unfamiliar it is.",
+    "I recover instantly and completely from any setback, every single time, without fail.",
+    "I have completely mastered exactly how to make anything stick in my memory, always.",
+    "I have absolute, unshakeable clarity on exactly who I am and what I stand for.",
+    "I express every idea with perfect, complete clarity and people understand me the first time, always."
+  ];
+  const POST_TEXT = [
+    "I now carry myself more like an emerging professional than a student.",
+    "I now hold my focus without letting my phone pull me off.",
+    "I now have a clearer sense of what I am genuinely good at.",
+    "I now use a wider range of words comfortably when I express myself.",
+    "I now get my real priorities done on most days.",
+    "I now adapt to change and new situations without much trouble.",
+    "I now hold a steady sense of my own worth in most situations.",
+    "I now stay steady under pressure instead of being thrown by it.",
+    "I now communicate at a solid level in both speech and writing.",
+    "I now learn in ways that actually work with how my brain learns best.",
+    "When I fail at something, I now go back and try a different way.",
+    "I now adjust how I communicate to suit whoever I am speaking with.",
+    "I now know my core strengths and use them with confidence.",
+    "I now find the right words for what I mean more easily.",
+    "I now manage my time, tasks and energy with real discipline.",
+    "I now approach things with a professional mindset more than a school one.",
+    "I now treat what I am not yet good at as something I can build, and I act on it.",
+    "I now speak and present with real confidence, whoever is in the room.",
+    "I now manage my phone and screens rather than them managing me.",
+    "I now pick up new things more easily than I used to.",
+    "I now recover well and keep going when something sets me back.",
+    "I now use methods that help things stick in my memory.",
+    "I now have a clear, settled sense of who I am and what I stand for.",
+    "I now explain my ideas clearly enough that people usually follow me the first time."
+  ];
+  const SCALE_LABELS = { 1: "Not at all", 2: "Slightly", 3: "Somewhat", 4: "Mostly", 5: "Completely" };
+
   // 5 areas → question numbers (1-indexed, mapped to QKEYS index = n-1)
   const AREAS = [
     { name: "Engineering the self", qs: [1, 7, 16, 23] },
@@ -283,6 +430,7 @@
 
   let allRows = [];
   let matched = [];      // [{key, name, college, section, pre:{}, post:{}}]
+  let allStudents = [];  // everyone who submitted anything (pre and/or post)
   let excludedCount = 0;
   let collegeCol = null, sectionCol = null, idCol = null;
   let currentView = "overall";
@@ -323,6 +471,7 @@
       allRows = [];
       processData();
       renderSubmissions();
+      renderRoster();
       renderAnalytics();
       document.getElementById("lastUpdate").textContent = "Connect your sheet to see submissions";
       return;
@@ -338,6 +487,7 @@
         allRows = (data.rows || []).filter(function (r) { return r.Name; });
         processData();
         renderSubmissions();
+        renderRoster();
         renderAnalytics();
         document.getElementById("lastUpdate").textContent =
           "Updated " + new Date().toLocaleTimeString();
@@ -346,6 +496,7 @@
         allRows = [];
         processData();
         renderSubmissions();
+        renderRoster();
         renderAnalytics();
         document.getElementById("lastUpdate").textContent = "Connection error";
       });
@@ -373,8 +524,10 @@
 
     matched = [];
     excludedCount = 0;
+    allStudents = [];
     Object.keys(byKey).forEach(function (k) {
       const rec = byKey[k];
+      allStudents.push(rec);
       if (rec.pre && rec.post) matched.push(rec);
       else excludedCount++;
     });
@@ -482,6 +635,114 @@
       return "<li><span>" + r.Name + "</span><span class='tot'>" + (t != null ? t + " / 120" : "") + "</span></li>";
     }).join("");
   }
+
+  // ===== Students roster tab =====
+  function renderRoster() {
+    const body = document.getElementById("rosterBody");
+    const emptyEl = document.getElementById("roster-empty");
+    const countEl = document.getElementById("rosterCount");
+    const wrap = document.querySelector(".roster-wrap");
+
+    if (!allStudents.length) {
+      body.innerHTML = "";
+      wrap.classList.add("hidden");
+      emptyEl.classList.remove("hidden");
+      countEl.textContent = "";
+      return;
+    }
+    wrap.classList.remove("hidden");
+    emptyEl.classList.add("hidden");
+
+    const q = (document.getElementById("rosterSearch").value || "").trim().toLowerCase();
+    let list = allStudents.slice();
+    if (q) {
+      list = list.filter(function (rec) {
+        const nm = String(rec.name || "").toLowerCase();
+        const col = String(rec.college || "").toLowerCase();
+        return nm.indexOf(q) !== -1 || col.indexOf(q) !== -1;
+      });
+    }
+    list.sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
+
+    countEl.textContent = list.length + (list.length === 1 ? " student" : " students");
+
+    body.innerHTML = list.map(function (rec) {
+      const preT = rec.pre ? num(rec.pre.Total) : null;
+      const postT = rec.post ? num(rec.post.Total) : null;
+      const growth = (preT != null && postT != null) ? (postT - preT) : null;
+
+      const preCell = preT != null
+        ? "<span class='pill pre'>" + preT + " / 120</span>"
+        : "<span class='pill muted'>—</span>";
+      const postCell = postT != null
+        ? "<span class='pill post'>" + postT + " / 120</span>"
+        : "<span class='pill muted'>—</span>";
+      const growthCell = growth != null
+        ? "<span class='" + (growth > 0 ? "growth-pos" : "growth-zero") + "'>" + (growth >= 0 ? "+" : "") + growth + "</span>"
+        : "<span class='growth-zero'>—</span>";
+      const college = rec.college ? rec.college : "<span style='color:var(--grey)'>—</span>";
+
+      return "<tr onclick=\"openStudentModal('" + encodeURIComponent(rec.key) + "')\">" +
+        "<td class='nm'>" + rec.name + "</td>" +
+        "<td>" + college + "</td>" +
+        "<td class='num'>" + preCell + "</td>" +
+        "<td class='num'>" + postCell + "</td>" +
+        "<td class='num'>" + growthCell + "</td>" +
+        "</tr>";
+    }).join("");
+  }
+
+  function openStudentModal(encKey) {
+    const key = decodeURIComponent(encKey);
+    const rec = allStudents.filter(function (r) { return r.key === key; })[0];
+    if (!rec) return;
+
+    document.getElementById("modalName").textContent = rec.name;
+    const preT = rec.pre ? num(rec.pre.Total) : null;
+    const postT = rec.post ? num(rec.post.Total) : null;
+    let meta = rec.college ? rec.college : "";
+    const bits = [];
+    if (preT != null) bits.push("Pre " + preT + " / 120");
+    if (postT != null) bits.push("Post " + postT + " / 120");
+    if (preT != null && postT != null) bits.push((postT - preT >= 0 ? "+" : "") + (postT - preT) + " growth");
+    if (bits.length) meta += (meta ? "  ·  " : "") + bits.join("  ·  ");
+    document.getElementById("modalMeta").textContent = meta;
+
+    document.getElementById("modalBody").innerHTML =
+      answerSection("Pre assessment", "pre", rec.pre, PRE_TEXT) +
+      answerSection("Post assessment", "post", rec.post, POST_TEXT);
+
+    document.getElementById("modalOverlay").classList.add("open");
+    document.body.style.overflow = "hidden";
+  }
+
+  function answerSection(title, cls, row, texts) {
+    let html = "<div class='ans-section-title " + cls + "'>" + title + "</div>";
+    if (!row) {
+      html += "<div class='ans-missing'>Not submitted yet.</div>";
+      return html;
+    }
+    QKEYS.forEach(function (k, i) {
+      const v = num(row[k]);
+      const scoreHtml = v != null
+        ? "<span class='ans-score'>" + v + "</span><span class='ans-label'>" + (SCALE_LABELS[v] || "") + "</span>"
+        : "<span class='ans-score' style='color:var(--grey)'>—</span>";
+      html += "<div class='ans-row'>" +
+        "<div class='ans-q'><span class='qn'>Q" + (i + 1) + "</span>" + texts[i] + "</div>" +
+        "<div class='ans-choice'>" + scoreHtml + "</div>" +
+        "</div>";
+    });
+    return html;
+  }
+
+  function closeStudentModal(e) {
+    document.getElementById("modalOverlay").classList.remove("open");
+    document.body.style.overflow = "";
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closeStudentModal();
+  });
 
   // ===== Analytics tab =====
   function renderAnalytics() {
