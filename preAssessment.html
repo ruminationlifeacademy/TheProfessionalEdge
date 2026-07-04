@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>The Professional Edge — Pre assessment | Rumination Life Academy</title>
+<title>The Professional Edge — Semester 1: The Discovery Phase — Pre assessment | Rumination Life Academy</title>
 <style>
   :root {
     --blue: #29ABE2;
@@ -33,7 +33,8 @@
   }
   .topbar img { height: 64px; width: auto; display: block; max-width: 100%; }
 
-  .brand { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; font-weight: 700; }
+  .brand { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; font-weight: 700; }
+  .phase-tag { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--grey); margin-bottom: 14px; font-weight: 600; }
   h1 { font-size: 26px; margin-bottom: 14px; line-height: 1.25; color: var(--ink); }
   .sub { color: var(--grey); font-size: 15px; margin-bottom: 28px; }
 
@@ -44,6 +45,13 @@
     background: var(--white); color: var(--ink); font-size: 16px;
   }
   input[type=text]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  select {
+    width: 100%; padding: 13px 14px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--white); color: var(--ink); font-size: 16px; appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%236B7E8C' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center; background-size: 18px;
+  }
+  select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
   .q { background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 14px; }
   .q-num { color: var(--accent); font-size: 13px; font-weight: 700; margin-bottom: 6px; }
@@ -82,15 +90,38 @@
     </div>
 
     <div class="brand">The Professional Edge</div>
+    <div class="phase-tag">Semester 1 — The Discovery Phase</div>
     <h1>Pre assessment</h1>
     <p class="sub">Rate each statement honestly. There are no right answers — this maps where you are right now.</p>
 
     <div class="card">
-      <label class="field" for="name">Your full name</label>
-      <input type="text" id="name" placeholder="Enter your name" autocomplete="name" />
+      <label class="field" for="name">Name of the student</label>
+      <input type="text" id="name" placeholder="Enter your full name" autocomplete="name" />
       <div style="height:16px"></div>
-      <label class="field" for="institution">Institution / university name</label>
-      <input type="text" id="institution" placeholder="Enter your college or university" autocomplete="organization" />
+
+      <label class="field" for="rollNo">Roll No.</label>
+      <input type="text" id="rollNo" placeholder="Enter your roll number" autocomplete="off" />
+      <div style="height:16px"></div>
+
+      <label class="field" for="college">Name of the college</label>
+      <input type="text" id="college" placeholder="Enter your college name" autocomplete="organization" />
+      <div style="height:16px"></div>
+
+      <label class="field" for="programme">Programme / Department</label>
+      <input type="text" id="programme" placeholder="e.g. B.Com, B.Sc Computer Science" autocomplete="off" />
+      <div style="height:16px"></div>
+
+      <label class="field" for="section">Section</label>
+      <input type="text" id="section" placeholder="Enter your section" autocomplete="off" />
+      <div style="height:16px"></div>
+
+      <label class="field" for="stream">Stream</label>
+      <select id="stream">
+        <option value="" disabled selected>Select your stream</option>
+        <option value="Government Aided Stream (GAS)">Government Aided Stream (GAS)</option>
+        <option value="Self-financing Stream I (SFS I)">Self-financing Stream I (SFS I)</option>
+        <option value="Self-financing Stream II (SFS II)">Self-financing Stream II (SFS II)</option>
+      </select>
     </div>
 
     <div class="progress" id="progress">0 of 24 answered</div>
@@ -166,12 +197,19 @@
     const answered = scores.filter(function (s) { return s !== null; }).length;
     progressEl.textContent = answered + " of 24 answered";
     const nameOk = document.getElementById("name").value.trim().length > 0;
-    const instOk = document.getElementById("institution").value.trim().length > 0;
-    submitBtn.disabled = !(answered === 24 && nameOk && instOk);
+    const rollOk = document.getElementById("rollNo").value.trim().length > 0;
+    const collegeOk = document.getElementById("college").value.trim().length > 0;
+    const programmeOk = document.getElementById("programme").value.trim().length > 0;
+    const sectionOk = document.getElementById("section").value.trim().length > 0;
+    const streamOk = document.getElementById("stream").value.trim().length > 0;
+    submitBtn.disabled = !(answered === 24 && nameOk && rollOk && collegeOk && programmeOk && sectionOk && streamOk);
   }
 
-  document.getElementById("name").addEventListener("input", updateProgress);
-  document.getElementById("institution").addEventListener("input", updateProgress);
+  ["name", "rollNo", "college", "programme", "section", "stream"].forEach(function (id) {
+    const el = document.getElementById(id);
+    el.addEventListener("input", updateProgress);
+    el.addEventListener("change", updateProgress);
+  });
 
   submitBtn.addEventListener("click", function () {
     errEl.classList.add("hidden");
@@ -181,7 +219,11 @@
     const total = scores.reduce(function (a, b) { return a + b; }, 0);
     const payload = {
       name: document.getElementById("name").value.trim(),
-      institution: document.getElementById("institution").value.trim(),
+      rollNo: document.getElementById("rollNo").value.trim(),
+      college: document.getElementById("college").value.trim(),
+      programme: document.getElementById("programme").value.trim(),
+      section: document.getElementById("section").value.trim(),
+      stream: document.getElementById("stream").value,
       phase: PHASE,
       scores: scores,
       total: total

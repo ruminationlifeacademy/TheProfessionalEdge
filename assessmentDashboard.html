@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>The Professional Edge — Assessment Dashboard | Rumination Life Academy</title>
+<title>The Professional Edge — Semester 1: The Discovery Phase — Assessment Dashboard | Rumination Life Academy</title>
 <style>
   :root {
     --blue: #29ABE2;
@@ -49,6 +49,7 @@
 
   .head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 18px; flex-wrap: wrap; gap: 12px; }
   .brand { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--blue); font-weight: 700; }
+  .phase-tag { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--grey); font-weight: 600; margin-top: 4px; }
   h1 { font-size: 28px; margin-top: 4px; color: var(--ink); }
   .refresh { font-size: 13px; color: var(--grey); }
   .refresh button {
@@ -155,8 +156,8 @@
   }
   .roster-search:focus { outline: none; border-color: var(--blue); }
   .roster-count { font-size: 13px; color: var(--grey); }
-  .roster-wrap { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-  table.roster { width: 100%; border-collapse: collapse; }
+  .roster-wrap { border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; }
+  table.roster { width: 100%; border-collapse: collapse; min-width: 760px; }
   table.roster th, table.roster td { padding: 13px 16px; text-align: left; font-size: 14px; border-bottom: 1px solid var(--line); }
   table.roster th { background: var(--soft); color: var(--grey); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
   table.roster th.num, table.roster td.num { text-align: center; font-variant-numeric: tabular-nums; }
@@ -212,6 +213,7 @@
   <div class="head">
     <div>
       <div class="brand">The Professional Edge</div>
+      <div class="phase-tag">Semester 1 — The Discovery Phase</div>
       <h1>Assessment dashboard</h1>
     </div>
     <div class="refresh">
@@ -250,7 +252,7 @@
   <!-- TAB 2: STUDENTS ROSTER -->
   <div class="tabpane" id="pane-students">
     <div class="roster-controls">
-      <input type="text" id="rosterSearch" class="roster-search" placeholder="Search by name or college…" oninput="renderRoster()" />
+      <input type="text" id="rosterSearch" class="roster-search" placeholder="Search by name, roll no, college, programme, section or stream…" oninput="renderRoster()" />
       <span class="roster-count" id="rosterCount"></span>
     </div>
     <div class="roster-wrap">
@@ -258,7 +260,11 @@
         <thead>
           <tr>
             <th>Student name</th>
+            <th>Roll No.</th>
             <th>College</th>
+            <th>Programme / Dept.</th>
+            <th>Section</th>
+            <th>Stream</th>
             <th class="num">Pre score</th>
             <th class="num">Post score</th>
             <th class="num">Growth</th>
@@ -303,6 +309,11 @@
         <div class="ctrl hidden" id="ctrl-section">
           <label>Class / section</label>
           <select id="sectionSelect" onchange="renderAnalytics()"></select>
+        </div>
+
+        <div class="ctrl hidden" id="ctrl-stream">
+          <label>Stream</label>
+          <select id="streamSelect" onchange="renderAnalytics()"></select>
         </div>
       </div>
 
@@ -425,14 +436,17 @@
   // Possible column names for optional filters (case-insensitive match)
   const COLLEGE_KEYS = ["College", "college", "Institution", "institution"];
   const SECTION_KEYS = ["Section", "section", "Class", "class", "Class/Section", "Department", "department"];
+  const PROGRAMME_KEYS = ["Programme", "programme", "Program", "program", "Programme/Department", "Programme_Department"];
+  const STREAM_KEYS = ["Stream", "stream"];
+  const ROLL_KEYS = ["RollNo", "rollNo", "Roll", "RollNumber", "rollno"];
   // Possible stable-key columns; fall back to Name
-  const IDKEYS = ["RollNo", "Roll", "RollNumber", "ID", "Id", "StudentID", "Email", "email"];
+  const IDKEYS = ["RollNo", "rollNo", "Roll", "RollNumber", "ID", "Id", "StudentID", "Email", "email"];
 
   let allRows = [];
-  let matched = [];      // [{key, name, college, section, pre:{}, post:{}}]
+  let matched = [];      // [{key, name, college, section, programme, stream, rollNo, pre:{}, post:{}}]
   let allStudents = [];  // everyone who submitted anything (pre and/or post)
   let excludedCount = 0;
-  let collegeCol = null, sectionCol = null, idCol = null;
+  let collegeCol = null, sectionCol = null, idCol = null, programmeCol = null, streamCol = null, rollCol = null;
   let currentView = "overall";
 
   function num(v) { const n = parseFloat(v); return isNaN(n) ? null : n; }
@@ -452,9 +466,10 @@
     document.getElementById("view-overall").classList.toggle("active", v === "overall");
     document.getElementById("view-student").classList.toggle("active", v === "student");
     document.getElementById("ctrl-student").classList.toggle("hidden", v !== "student");
-    // college/section filters only in overall view
+    // college/section/stream filters only in overall view
     document.getElementById("ctrl-college").classList.toggle("hidden", !(v === "overall" && collegeCol));
     document.getElementById("ctrl-section").classList.toggle("hidden", !(v === "overall" && sectionCol));
+    document.getElementById("ctrl-stream").classList.toggle("hidden", !(v === "overall" && streamCol));
     renderAnalytics();
   }
 
@@ -506,6 +521,9 @@
     const headerKeys = allRows.length ? Object.keys(allRows[0]) : [];
     collegeCol = detectCol(headerKeys, COLLEGE_KEYS);
     sectionCol = detectCol(headerKeys, SECTION_KEYS);
+    programmeCol = detectCol(headerKeys, PROGRAMME_KEYS);
+    streamCol = detectCol(headerKeys, STREAM_KEYS);
+    rollCol = detectCol(headerKeys, ROLL_KEYS);
     idCol = detectCol(headerKeys, IDKEYS);
 
     // Build a stable key per student
@@ -517,7 +535,15 @@
     const byKey = {};
     allRows.forEach(function (r) {
       const k = keyOf(r);
-      if (!byKey[k]) byKey[k] = { key: k, name: r.Name, college: collegeCol ? r[collegeCol] : null, section: sectionCol ? r[sectionCol] : null };
+      if (!byKey[k]) byKey[k] = {
+        key: k,
+        name: r.Name,
+        rollNo: rollCol ? r[rollCol] : null,
+        college: collegeCol ? r[collegeCol] : null,
+        programme: programmeCol ? r[programmeCol] : null,
+        section: sectionCol ? r[sectionCol] : null,
+        stream: streamCol ? r[streamCol] : null
+      };
       if (r.Phase === "Pre") byKey[k].pre = r;
       if (r.Phase === "Post") byKey[k].post = r;
     });
@@ -536,10 +562,12 @@
     populateStudentSelect();
     populateFilter("collegeSelect", "college");
     populateFilter("sectionSelect", "section");
+    populateFilter("streamSelect", "stream");
 
-    // visibility of college/section controls
+    // visibility of college/section/stream controls
     document.getElementById("ctrl-college").classList.toggle("hidden", !(currentView === "overall" && collegeCol));
     document.getElementById("ctrl-section").classList.toggle("hidden", !(currentView === "overall" && sectionCol));
+    document.getElementById("ctrl-stream").classList.toggle("hidden", !(currentView === "overall" && streamCol));
   }
 
   function populateStudentSelect() {
@@ -601,8 +629,10 @@
     if (currentView === "overall") {
       const cv = collegeCol ? document.getElementById("collegeSelect").value : "__all";
       const sv = sectionCol ? document.getElementById("sectionSelect").value : "__all";
+      const stv = streamCol ? document.getElementById("streamSelect").value : "__all";
       if (collegeCol && cv && cv !== "__all") list = list.filter(function (r) { return String(r.college).trim() === cv; });
       if (sectionCol && sv && sv !== "__all") list = list.filter(function (r) { return String(r.section).trim() === sv; });
+      if (streamCol && stv && stv !== "__all") list = list.filter(function (r) { return String(r.stream).trim() === stv; });
     }
     return list;
   }
@@ -659,7 +689,12 @@
       list = list.filter(function (rec) {
         const nm = String(rec.name || "").toLowerCase();
         const col = String(rec.college || "").toLowerCase();
-        return nm.indexOf(q) !== -1 || col.indexOf(q) !== -1;
+        const roll = String(rec.rollNo || "").toLowerCase();
+        const prog = String(rec.programme || "").toLowerCase();
+        const sec = String(rec.section || "").toLowerCase();
+        const str = String(rec.stream || "").toLowerCase();
+        return nm.indexOf(q) !== -1 || col.indexOf(q) !== -1 || roll.indexOf(q) !== -1 ||
+          prog.indexOf(q) !== -1 || sec.indexOf(q) !== -1 || str.indexOf(q) !== -1;
       });
     }
     list.sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
@@ -681,10 +716,18 @@
         ? "<span class='" + (growth > 0 ? "growth-pos" : "growth-zero") + "'>" + (growth >= 0 ? "+" : "") + growth + "</span>"
         : "<span class='growth-zero'>—</span>";
       const college = rec.college ? rec.college : "<span style='color:var(--grey)'>—</span>";
+      const rollCell = rec.rollNo ? rec.rollNo : "<span style='color:var(--grey)'>—</span>";
+      const progCell = rec.programme ? rec.programme : "<span style='color:var(--grey)'>—</span>";
+      const sectionCell = rec.section ? rec.section : "<span style='color:var(--grey)'>—</span>";
+      const streamCell = rec.stream ? rec.stream : "<span style='color:var(--grey)'>—</span>";
 
       return "<tr onclick=\"openStudentModal('" + encodeURIComponent(rec.key) + "')\">" +
         "<td class='nm'>" + rec.name + "</td>" +
+        "<td>" + rollCell + "</td>" +
         "<td>" + college + "</td>" +
+        "<td>" + progCell + "</td>" +
+        "<td>" + sectionCell + "</td>" +
+        "<td>" + streamCell + "</td>" +
         "<td class='num'>" + preCell + "</td>" +
         "<td class='num'>" + postCell + "</td>" +
         "<td class='num'>" + growthCell + "</td>" +
@@ -700,7 +743,13 @@
     document.getElementById("modalName").textContent = rec.name;
     const preT = rec.pre ? num(rec.pre.Total) : null;
     const postT = rec.post ? num(rec.post.Total) : null;
-    let meta = rec.college ? rec.college : "";
+    const infoBits = [];
+    if (rec.rollNo) infoBits.push("Roll No. " + rec.rollNo);
+    if (rec.college) infoBits.push(rec.college);
+    if (rec.programme) infoBits.push(rec.programme);
+    if (rec.section) infoBits.push("Section " + rec.section);
+    if (rec.stream) infoBits.push(rec.stream);
+    let meta = infoBits.join("  ·  ");
     const bits = [];
     if (preT != null) bits.push("Pre " + preT + " / 120");
     if (postT != null) bits.push("Post " + postT + " / 120");
